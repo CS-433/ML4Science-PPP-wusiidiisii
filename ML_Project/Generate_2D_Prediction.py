@@ -1,9 +1,9 @@
 '''
-Author: Xingchen Li, Ruihang Jiang, Haochen Su
-Date: 2022-12-17 16:04:59
-LastEditTime: 2022-12-17 17:35:20
+Author: YourName
+Date: 2022-12-17 23:27:33
+LastEditTime: 2022-12-19 01:39:03
 LastEditors: YourName
-Description: Generate the dataset for ML model
+Description: 
 '''
 import logging
 import kubric as kb
@@ -30,9 +30,9 @@ parser.add_argument("--r_interval", type=int, default=3,
 
 parser.add_argument("--r_change_number", type=int, default=1,
                     help="change time of parameter r")
-parser.add_argument("--phi_change_number", type=int, default=5,
+parser.add_argument("--phi_change_number", type=int, default=1,
                     help="change time of parameter phi")
-parser.add_argument("--theta_change_number", type=int, default=5,
+parser.add_argument("--theta_change_number", type=int, default=1,
                     help="change time of parameter theta")
 
 # Configuration for the source of the assets
@@ -45,8 +45,8 @@ parser.add_argument("--hdri_assets", type=str,
 parser.add_argument("--save_state", dest="save_state", action="store_true")
 
 # Configuration for the background setting
-parser.add_argument("--bg_change_number", type=int, default=50,
-                    help="change time of background")
+parser.add_argument("--prediction_number", type=int, default=100,
+                    help="prediction_number")
 # Configuration for the friction and floor_restituion attributes of the background
 parser.add_argument("--floor_friction", type=float, default=0.3)
 parser.add_argument("--floor_restitution", type=float, default=0.5)
@@ -160,14 +160,54 @@ def probe_rotation_cal(qua_w, qua_x, qua_y, qua_z):
     return probe_rotation_matrix
 
 
+def rotation_convert_quaternion(rotation_matrix):
+    m00 = rotation_matrix[0, 0]
+    m01 = rotation_matrix[0, 1]
+    m02 = rotation_matrix[0, 2]
+    m10 = rotation_matrix[1, 0]
+    m11 = rotation_matrix[1, 1]
+    m12 = rotation_matrix[1, 2]
+    m20 = rotation_matrix[2, 0]
+    m21 = rotation_matrix[2, 1]
+    m22 = rotation_matrix[2, 2]
+
+    tr = m00 + m11 + m22
+
+    if (tr > 0):
+        S = np.sqrt(tr+1.0) * 2
+        qw = 0.25 * S
+        qx = (m21 - m12) / S
+        qy = (m02 - m20) / S
+        qz = (m10 - m01) / S
+    elif ((m00 > m11)&(m00 > m22)):
+        S = np.sqrt(1.0 + m00 - m11 - m22) * 2
+        qw = (m21 - m12) / S
+        qx = 0.25 * S
+        qy = (m01 + m10) / S; 
+        qz = (m02 + m20) / S; 
+    elif (m11 > m22): 
+        S = np.sqrt(1.0 + m11 - m00 - m22) * 2
+        qw = (m02 - m20) / S
+        qx = (m01 + m10) / S
+        qy = 0.25 * S
+        qz = (m12 + m21) / S
+    else:
+        S = np.sqrt(1.0 + m22 - m00 - m11) * 2
+        qw = (m10 - m01) / S
+        qx = (m02 + m20) / S
+        qy = (m12 + m21) / S
+        qz = 0.25 * S
+    return (qw, qx, qy, qz)
+
+
 # Get the change number of the background
-bg_change_num = FLAGS.bg_change_number
+prediction_number = FLAGS.prediction_number
 # For each selected background, generate the corresponding probe images
-for bg_index in range(bg_change_num):
+for prediction_index in range(prediction_number):
     # Configuration for the output file path
-    FLAGS.job_dir = './ML_Project/output/dataset/bg' + str(bg_index).zfill(4)
+    bg_index = int(prediction_index/2)
+    FLAGS.job_dir = './ML_Project/prediction/model_output_test_1/rgba'
     output_path = FLAGS.job_dir
-    output_txt_path = './ML_Project/output/dataset/'
 
     # Get the configuration for the parameters of camera position
     r_interval = FLAGS.r_interval
@@ -175,15 +215,9 @@ for bg_index in range(bg_change_num):
     phi_change_num = FLAGS.phi_change_number
     theta_change_num = FLAGS.theta_change_number
 
-    print("r_interval: {}, r_change_num: {}, phi_change_num: {}, theta_change_num: {}".format(
-        r_interval, r_change_num, phi_change_num, theta_change_num))
-
     # Generate blank folders for output
-    if os.path.exists(output_path):
-        shutil.rmtree(output_path)
-    os.makedirs(output_path)
-    os.makedirs(os.path.join(output_path, 'matrix'))
-    os.makedirs(os.path.join(output_path, 'rgba'))
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
     # Generate scene, random generator and setting the file path
     scene, rng, output_dir, scratch_dir = kb.setup(FLAGS)
@@ -192,32 +226,6 @@ for bg_index in range(bg_change_num):
     hdri_source = kb.AssetSource.from_manifest(FLAGS.hdri_assets)
     # Split the background resources and we will only use the training parts in our project
     train_backgrounds, test_backgrounds = hdri_source.get_test_split(fraction=0.1)
-
-    # Print the basic information of background
-    if bg_index == 0:
-        logging.info("Training backgrounds number: " + str(len(train_backgrounds)))
-        logging.info(train_backgrounds)
-        logging.info("Testing backgrounds number: " + str(len(test_backgrounds)))
-        logging.info(test_backgrounds)
-
-        # Record the background information
-        train_bg_txt = os.path.join(output_txt_path, 'train_bg.txt')
-        with open(train_bg_txt, 'w') as f:
-            f.write("The number of backgrounds in training dataset is " + str(len(train_backgrounds)))
-            f.write("\n")
-            i = 0
-            for single_bg in train_backgrounds:
-                f.write("bg" + str(i) + ": " + str(single_bg))
-                f.write("\n")
-                i += 1
-        test_bg_txt = os.path.join(output_txt_path, 'test_bg.txt')
-        with open(test_bg_txt, 'w') as f:
-            f.write("The number of backgrounds in testing dataset is " + str(len(test_backgrounds)))
-            f.write("\n")
-            for single_bg in test_backgrounds:
-                f.write("bg" + str(i) + ": " + str(single_bg))
-                f.write("\n")
-                i += 1
 
     # Select one background from the background dataset
     if FLAGS.backgrounds_split == "train":
@@ -229,7 +237,7 @@ for bg_index in range(bg_change_num):
     logging.info("Using background %s", hdri_id)
 
     # Generate images of probe with different angles and distance in the selected background
-    for frame in range(0, r_change_num*phi_change_num*theta_change_num):
+    for frame in range(0, 1):
         # Redefine the scene
         scene = kb.Scene(resolution=(256, 256), frame_start=0, frame_end=1)
         # Generate the blender object
@@ -267,70 +275,46 @@ for bg_index in range(bg_change_num):
             position=(0, 0, 0),
             )
 
-        # Generate a random rotation of the probe
-        qua_w, qua_x, qua_y, qua_z = quaternion_cal()
-        # Generate a random position of the probe
-        probe_z = np.random.uniform(0, 15, 1)[0]
+        prediction_json_file_path = './ML_Project/prediction/model_output_test_1/matrix'
+        prediction_json_file_name = 'prediction_label' + str(prediction_index).zfill(4) + '.json'
+        with open(os.path.join(prediction_json_file_path, prediction_json_file_name), 'r') as f:
+            data = json.load(f)
+        f.close()
+
+        pred_matrix_probe_in_cam_coord = np.array(data['matrix_probe_in_cam_coord_pre'])
+        camera_extrinsic = np.array(data['extrinsic_matrix_camera'])
+
+        pred_matrix_probe_in_world_coord = camera_extrinsic @ pred_matrix_probe_in_cam_coord
+        pred_probe_rotation = pred_matrix_probe_in_world_coord[0:3, 0:3]
+        pred_probe_position = pred_matrix_probe_in_world_coord[0:3, 3]
+        pred_camera_rotation = camera_extrinsic[0:3, 0:3]
+        pred_camera_position = camera_extrinsic[0:3, 3]
+
+        pred_probe_quaternion = rotation_convert_quaternion(pred_probe_rotation)
+        pred_camera_quaternion = rotation_convert_quaternion(pred_camera_rotation)
+
         # Setting the scale, rotation and the position of the probe
         obj_probe.scale = (0.03, 0.03, 0.03)
-        obj_probe.quaternion = (qua_w, qua_x, qua_y, qua_z)
-        obj_probe.position=(0, 0, 3.5+probe_z) 
+        obj_probe.quaternion = pred_probe_quaternion
+        obj_probe.position = pred_probe_position
         # Add the probe in the scene
         scene += obj_probe
-        
-        # Get the original coordinates of the probe in Spherical Coordinates
-        original_camera_position = (7, -7, 4)
-        r = np.sqrt(sum(a * a for a in original_camera_position))
-        phi = np.arccos(original_camera_position[2] / r)
-        theta = np.arccos(original_camera_position[0] / (r * np.sin(phi)))
-        phi = 0
-
-        # Get the position of the camera in each frame
-        x, y, z = camera_position_cal(frame, r_interval, phi_change_num, theta_change_num)
-        # Get the random coordinates of the direction of camera
-        x_look, y_look, z_look = camera_lookat_cal()
 
         # Setting the position and direction of camera in the scene
-        scene.camera.position = (x, y, z+probe_z)
-        scene.camera.look_at((x_look, y_look, z_look+probe_z))
+        scene.camera.position = pred_camera_position
+        scene.camera.quaternion = pred_camera_quaternion
+        # scene.camera.look_at((0, 0, pred_probe_position[2]))
 
         # Record the position and quaternion in different frame
         scene.camera.keyframe_insert("position", frame)
         scene.camera.keyframe_insert("quaternion", frame)
-
-        # Calculate the probe rotation matrix
-        probe_rotation_matrix = probe_rotation_cal(qua_w, qua_x, qua_y, qua_z)
-
-        # Record the label information in json files
-        output_dir_matrix = os.path.join(output_path, "matrix")
-        # Get the extrinsic matrix of camera and calculate the inverse of it
-        camera_extrinsic = np.array(scene.camera.matrix_world)
-        b = np.identity(np.shape(camera_extrinsic)[0])
-        matrix_probe = np.linalg.solve(camera_extrinsic, b)
-        # Get the extrinsic matrix of probe
-        probe_matrix_world_array = np.array(obj_probe.matrix_world)
-        # Calculate the new extrinsic matrix of camera with the probe as a reference point
-        matrix_probe_in_cam_coord = matrix_probe @ probe_matrix_world_array
-        # Get the intrinsic matrix of the camera
-        camera_intrinsic = scene.camera.intrinsics
-        # Record informations in json files for each images
-        extrinsic_dict = {'matrix_probe_in_cam_coord': (matrix_probe_in_cam_coord).tolist(),
-                          'matrix_probe_in_world_coord': (probe_matrix_world_array).tolist(),
-                          'intrinsic_matrix_camera': (camera_intrinsic).tolist(),
-                          'extrinsic_matrix_camera': (camera_extrinsic).tolist()}
-        json_file_name = "bg" + str(bg_index).zfill(4) + "_" + "extrinsic_" + str(frame).zfill(5) + ".json"
-        extrinsic_json = json.dumps(extrinsic_dict, indent=4)
-        with open(os.path.join(output_dir_matrix, json_file_name), 'w') as json_file:
-            json_file.write(extrinsic_json)
-        logging.info("Saving " + os.path.join(output_dir_matrix, json_file_name))
         
         # Record the blender data for each images
         output_dir_matrix = os.path.join(output_path, "blend")
-        blend_file_name = "bg" + str(bg_index).zfill(4) + "_" + "blend_" + str(frame).zfill(5) + ".blend"
+        blend_file_name = "bg" + str(bg_index).zfill(4) + "_" + "blend_" + str(prediction_index).zfill(5) + ".blend"
         # renderer.save_state(os.path.join(output_dir_matrix, blend_file_name))
 
         # Record the rgba pictures from the camera
         frames = renderer.render_still()
-        output_dir_matrix = os.path.join(output_path, "rgba")
-        rgba_file_name = "bg" + str(bg_index).zfill(4) + "_" + "rgba_" + str(frame).zfill(5) + ".png"
-        kb.write_png(frames["rgba"], os.path.join(output_dir_matrix, rgba_file_name))
+        rgba_file_name = "bg" + str(bg_index).zfill(4) + "_" + "rgba_" + str(prediction_index).zfill(5) + ".png"
+        kb.write_png(frames["rgba"], os.path.join(output_path, rgba_file_name))
