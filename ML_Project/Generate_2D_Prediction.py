@@ -1,9 +1,9 @@
 '''
-Author: YourName
+Author: Ruihang Jiang
 Date: 2022-12-17 23:27:33
-LastEditTime: 2022-12-19 01:39:03
+LastEditTime: 2022-12-20 21:49:09
 LastEditors: YourName
-Description: 
+Description: Generate the Prediction Images according to the Output of the Model
 '''
 import logging
 import kubric as kb
@@ -55,111 +55,13 @@ parser.add_argument("--backgrounds_split", choices=["train", "test"],
 
 FLAGS = parser.parse_args()
 
+
 '''
-description: Calculate the new position of camera in each frame
-param {*} frame: the index of the frame
-param {*} r_interval: the difference of distance r in Spherical Coordinates
-param {*} phi_change_num: the difference of phi in Spherical Coordinates
-param {*} theta_change_num: the difference of theta in Spherical Coordinates
-return {*} (x, y, z): the new position of camera in World Coordinates
+description: Convert the rotation matrix to quaternion
+param {*} rotation_matrix: rotation matrix
+return {*} (qw, qx, qy, qz): quaternion
 use: 
 '''
-def camera_position_cal(frame, r_interval, phi_change_num, theta_change_num):
-
-    phi_change = np.pi / 2 / (phi_change_num)
-    theta_change = (2 * np.pi) / theta_change_num
-
-    i = frame / (phi_change_num*theta_change_num)
-    j = frame / theta_change_num % phi_change_num
-    k = frame % theta_change_num
-
-    r_new = r + i * r_interval + np.random.normal(loc=0, scale=1.5, size=1)[0]
-    phi_new = np.pi / 2 - j * phi_change + np.random.uniform(-5, 5, 1)[0] / 180 * np.pi
-    theta_new = k * theta_change + theta + np.random.uniform(-5, 5, 1)[0] / 180 * np.pi
-
-    phi_new = np.maximum(phi_new, 0)
-    phi_new = np.minimum(phi_new, np.pi / 2)
-
-    theta_new = np.maximum(theta_new, 0)
-    theta_new = np.minimum(theta_new, 2*np.pi)
-
-    # These values of (x, y, z) will lie on the same sphere as the original camera.
-    x = r_new * np.cos(theta_new) * np.sin(phi_new)
-    y = r_new * np.sin(theta_new) * np.sin(phi_new)
-    z = r_new * np.cos(phi_new)
-    z += 3.5
-    return x, y, z
-
-
-'''
-description: Generate a random direction of camera
-return {*} (x_look[0], y_look[0], z_look[0]): random direction of camera in World Coordinates
-'''
-def camera_lookat_cal():
-    x_look = np.random.normal(loc=0, scale=1, size=1)
-    y_look = np.random.normal(loc=0, scale=1, size=1)
-    z_look = np.random.normal(loc=3.5, scale=1, size=1)
-    return x_look[0], y_look[0], z_look[0] 
-
-
-'''
-description: Generate a random rotation of the probe. The rotation is decribed by a quaternion
-return {*} (qua_w, qua_x, qua_y, qua_z): the rotation quaternion of the probe
-'''
-def quaternion_cal():
-    rotation_cita = np.random.uniform(0, 2*np.pi, 1)[0]
-
-    rotation_axis_r = 1
-    rotation_axis_phi = np.random.uniform(0, np.pi, 1)[0]
-    rotation_axis_theta = np.random.uniform(0, 2*np.pi, 1)[0]
-
-    rotation_axis_x = rotation_axis_r * np.sin(rotation_axis_phi) * np.cos(rotation_axis_theta)
-    rotation_axis_y = rotation_axis_r * np.sin(rotation_axis_phi) * np.sin(rotation_axis_theta)
-    rotation_axis_z = rotation_axis_r * np.cos(rotation_axis_phi)
-    # print(rotation_cita/(2*np.pi)*180, rotation_axis_x, rotation_axis_y, rotation_axis_z)
-    qua_w = np.cos(rotation_cita/2)
-    qua_x = np.sin(rotation_cita/2) * rotation_axis_x
-    qua_y = np.sin(rotation_cita/2) * rotation_axis_y
-    qua_z = np.sin(rotation_cita/2) * rotation_axis_z
-
-    return qua_w, qua_x, qua_y, qua_z
-
-
-'''
-description: Calculate the rotation matrix according to the quaternion
-param {*} qua_w: the first element in quaternion
-param {*} qua_x: the second element in quaternion
-param {*} qua_y: the third element in quaternion
-param {*} qua_z: the fourth element in quaternion
-return {*} probe_rotation_matrix: the rotation matrix according to the quaternion
-use: 
-'''
-def probe_rotation_cal(qua_w, qua_x, qua_y, qua_z):
-    probe_rotation_matrix = np.eye(4)
-    # First row of the rotation matrix
-    r00 = 2 * (qua_w * qua_w + qua_x * qua_x) - 1
-    r01 = 2 * (qua_x * qua_y - qua_w * qua_z)
-    r02 = 2 * (qua_x * qua_z + qua_w * qua_y)
-     
-    # Second row of the rotation matrix
-    r10 = 2 * (qua_x * qua_y + qua_w * qua_z)
-    r11 = 2 * (qua_w * qua_w + qua_y * qua_y) - 1
-    r12 = 2 * (qua_y * qua_z - qua_w * qua_x)
-     
-    # Third row of the rotation matrix
-    r20 = 2 * (qua_x * qua_z - qua_w * qua_y)
-    r21 = 2 * (qua_y * qua_z + qua_w * qua_x)
-    r22 = 2 * (qua_w * qua_w + qua_z * qua_z) - 1
-
-    rot_matrix = np.array([[r00, r01, r02],
-                           [r10, r11, r12],
-                           [r20, r21, r22]])
-
-    probe_rotation_matrix[0:3, 0:3] = rot_matrix
-
-    return probe_rotation_matrix
-
-
 def rotation_convert_quaternion(rotation_matrix):
     m00 = rotation_matrix[0, 0]
     m01 = rotation_matrix[0, 1]
@@ -206,7 +108,7 @@ prediction_number = FLAGS.prediction_number
 for prediction_index in range(prediction_number):
     # Configuration for the output file path
     bg_index = int(prediction_index/2)
-    FLAGS.job_dir = './ML_Project/prediction/model_output_test_1/rgba'
+    FLAGS.job_dir = './ML_Project/prediction/rgba'
     output_path = FLAGS.job_dir
 
     # Get the configuration for the parameters of camera position

@@ -1,8 +1,8 @@
 '''
 Author: Xingchen Li, Ruihang Jiang, Haochen Su
 Date: 2022-12-17 16:04:59
-LastEditTime: 2022-12-17 17:35:20
-LastEditors: YourName
+LastEditTime: 2022-12-20 21:40:22
+LastEditors: Ruihang Jiang
 Description: Generate the dataset for ML model
 '''
 import logging
@@ -45,7 +45,7 @@ parser.add_argument("--hdri_assets", type=str,
 parser.add_argument("--save_state", dest="save_state", action="store_true")
 
 # Configuration for the background setting
-parser.add_argument("--bg_change_number", type=int, default=50,
+parser.add_argument("--bg_change_number", type=int, default=1,
                     help="change time of background")
 # Configuration for the friction and floor_restituion attributes of the background
 parser.add_argument("--floor_friction", type=float, default=0.3)
@@ -327,7 +327,7 @@ for bg_index in range(bg_change_num):
         # Record the blender data for each images
         output_dir_matrix = os.path.join(output_path, "blend")
         blend_file_name = "bg" + str(bg_index).zfill(4) + "_" + "blend_" + str(frame).zfill(5) + ".blend"
-        # renderer.save_state(os.path.join(output_dir_matrix, blend_file_name))
+        renderer.save_state(os.path.join(output_dir_matrix, blend_file_name))
 
         # Record the rgba pictures from the camera
         frames = renderer.render_still()
