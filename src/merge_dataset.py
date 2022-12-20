@@ -7,16 +7,16 @@ import shutil
 import random
 
 # paths and variable initialization
-root = "D:\\Code\\dataset_new"
-path_train_matrix = "D:\\Code\\ML_dataset_new\\train\\matrix"
-path_train_rgba = "D:\\Code\\ML_dataset_new\\train\\rgba"
-path_train_list = "D:\\Code\\ML_dataset_new\\train\\list\\list.txt"
-path_val_matrix = "D:\\Code\\ML_dataset_new\\val\\matrix"
-path_val_rgba = "D:\\Code\\ML_dataset_new\\val\\rgba"
-path_val_list = "D:\\Code\\ML_dataset_new\\val\\list\\list.txt"
-path_test_matrix = "D:\\Code\\ML_dataset_new\\test\\matrix"
-path_test_rgba = "D:\\Code\\ML_dataset_new\\test\\rgba"
-path_test_list = "D:\\Code\\ML_dataset_new\\test\\list\\list.txt"
+root = "../dataset_split"
+path_train_matrix = "../dataset_split/matrix/train"
+path_train_rgba = "../dataset_split/rgba/train"
+path_train_list = "../dataset_split/train_list.txt"
+path_val_matrix = "../dataset_split/matrix/val"
+path_val_rgba = "../dataset_split/rgba/val"
+path_val_list = "../dataset_split/val_list.txt"
+path_test_matrix = "../dataset_split/matrix/test"
+path_test_rgba = "../dataset_split/rgba/test"
+path_test_list = "../dataset_split/test_list.txt"
 count_train = 0
 count_val = 0
 count_test = 0
@@ -31,9 +31,9 @@ for i in range(50):
 	seed_list.append(seed)
 
 for i, foldername in enumerate(os.listdir(root)):
-	path_i = os.path.join(root, "bg{0:04d} (1)".format(i))
-	path_i_matrix = os.path.join(path_i, "matrix (1)")
-	path_i_rgba = os.path.join(path_i, "rgba (1)")
+	path_i = os.path.join(root, "bg{0:04d}".format(i))
+	path_i_matrix = os.path.join(path_i, "matrix")
+	path_i_rgba = os.path.join(path_i, "rgba")
 
 	# each background folder has 25 images
 	# random split into:
@@ -53,8 +53,8 @@ for i, foldername in enumerate(os.listdir(root)):
 
 	# rename the files and put into new directories
 	for j, filename in enumerate(os.listdir(path_i_matrix)):
-		name_old_matrix = os.path.join(path_i_matrix, "bg{0:04d}_extrinsic_{1:05d} (1).json".format(i,j))
-		name_old_rgba = os.path.join(path_i_rgba, "bg{0:04d}_rgba_{1:05d} (1).png".format(i,j))
+		name_old_matrix = os.path.join(path_i_matrix, "bg{0:04d}_extrinsic_{1:05d}.json".format(i,j))
+		name_old_rgba = os.path.join(path_i_rgba, "bg{0:04d}_rgba_{1:05d}.png".format(i,j))
 
 		if j in val_list:
 			name_new_matrix = os.path.join(path_i_matrix, "val_{0:05d}.json".format(count_val))
