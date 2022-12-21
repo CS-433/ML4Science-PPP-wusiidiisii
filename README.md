@@ -17,6 +17,7 @@ The project is divided into two stages.
 5. model_output: output from the NN model <br>
 6. prediction: Prediction files according to the model output and the rendering 2D images <br>
 7. compare_rgba: comparison of image pairs between the true images and the predict ones
+8. model_weight_best.pt: Trained weights for the ResNet152
 
 
 ### Getting started
