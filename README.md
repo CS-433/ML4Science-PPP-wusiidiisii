@@ -9,6 +9,15 @@ The project is divided into two stages.
 2. Train ResNet model according to the dataset we generated in the first step.
 3. Visualize the output of our model.
 
+### Github Folder Instruction
+1. src: All developed codes
+2. probe_models: Probe 3D Construction Data
+3. dataset: Generated dataset <br>
+4. dataset_split: dataset which has been split into training, validation and test set <br>
+5. model_output: output from the NN model <br>
+6. prediction: Prediction files according to the model output and the rendering 2D images <br>
+7. compare_rgba: comparison of image pairs between the true images and the predict ones
+
 
 ### Getting started
 The whole project is developed in Linux operating system. With Windows platform, it is necessary to install *wsl* and use *Ubuntu on Windows* to run the program. The instruction of installation only contains instructions for Linux OS.
