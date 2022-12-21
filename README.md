@@ -74,7 +74,7 @@ The generation code is:
 		--user $(id -u):$(id -g) \            
 		--volume "$(pwd):/kubric" \            
 		kubricdockerhub/kubruntu \            
-		/usr/bin/python3 ML_Project/Dataset_Generation.py
+		/usr/bin/python3 src/Dataset_Generation.py
 
 It is also possible to set parameters in dataset generation process. <br>
 
@@ -86,8 +86,35 @@ It is also possible to set parameters in dataset generation process. <br>
 	--backgrounds_split: select to use backgrounds in training or test sets
 
 ### Train Model
+1. Split the generated dataset into training, validation and test set
+
+		python3 ./src/merge_dataset.py
+
+2. Training the model on Google Colab
+
+	Put the file "src/run.ipynb" on Google Colab and follow steps in it.
+
 
 ### Visualize the Predicted Position of Probe
+1. Generate the prediction file from the model output
+
+		docker run --rm --interactive \           
+			--user $(id -u):$(id -g) \            
+			--volume "$(pwd):/kubric" \            
+			kubricdockerhub/kubruntu \            
+			/usr/bin/python3 src/Generate_prediction_file.py
+
+2. Generate the 2D images from the prediction files above
+
+		docker run --rm --interactive \            
+			--user $(id -u):$(id -g) \            
+			--volume "$(pwd):/kubric" \            
+			kubricdockerhub/kubruntu \            
+			/usr/bin/python3 src/Generate_2D_Prediction.py
+
+3. Generate the comparison image pairs between the true images and the predicted images
+
+		python3 ./src/compare_rgba.py
 
 ### Team Member
 - Xingchen Li<br>
