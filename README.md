@@ -1,8 +1,9 @@
-# ML Project: Probe Position Prediction
+# ML Project: Probe Posture Prediction
+ML4sciences project instructed by Jean-Baptiste Cordonnier about Probe Posture Prediction!
 
 ### Motivation and design
 
-Instead of using the traditional way, namely, the simple stereo or horizontal stereo, to recover the 3D structure of a scene from two 2D images, we perfer to obtain the 3D object position directly from 2D images with Machine Learning methods. <br>
+Instead of using the traditional way, namely, the simple stereo or horizontal stereo, to recover the 3D structure of a scene from two 2D images, we perfer to obtain the 3D object posture directly from 2D images with Machine Learning methods. <br>
 The project is divided into two stages. 
 
 1. Generate ourselves training dataset with the python library *Kubric*. 
@@ -105,7 +106,7 @@ It is also possible to set parameters in dataset generation process. <br>
 	Put the file "src/run.ipynb" on Google Colab and follow steps in it.
 
 
-### Visualize the Predicted Position of Probe
+### Visualize the Predicted Posture of Probe
 1. Generate the prediction file from the model output
 
 		docker run --rm --interactive \           
